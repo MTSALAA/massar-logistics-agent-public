@@ -18,6 +18,9 @@ services:
       NOMINATIM_COUNTRY: ${NOMINATIM_COUNTRY:-dz}
       # Seconds between two housekeeping passes (delay alerts, retries towards the core). 0 switches it off.
       MAINTENANCE_SECONDS: ${MAINTENANCE_SECONDS:-300}
+      # Sign-in cookie: the signing key (empty: a random key kept in the data volume) and the Secure flag behind HTTPS.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
