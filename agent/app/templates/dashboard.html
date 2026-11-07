@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Massar Logistics{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="lead" style="margin:0">Company <span class="mono">{{ tenant }}</span></p>
+  </div>
+</div>
+
+<div id="indicators" hx-get="/ui/fragments/indicators" hx-trigger="load, every 15s, refresh from:body" hx-swap="innerHTML">
+  <div class="grid">{% for _ in range(6) %}<div class="kpi"><div class="label">Loading</div><div class="value">...</div></div>{% endfor %}</div>
+</div>
+
+<div class="two">
+  <div>
+    <div class="card">
+      <h2>Plan the routes</h2>
+      <form hx-post="/ui/plan" hx-target="#plan-result" hx-swap="innerHTML" hx-indicator="#plan-spin" class="row">
+        <div class="field">
+          <label for="plan_date">Day to deliver</label>
+          <input id="plan_date" type="date" name="plan_date" value="{{ today }}">
+        </div>
+        <button class="primary" type="submit" style="align-self:flex-end">Plan routes now</button>
+        <span id="plan-spin" class="htmx-indicator muted" style="align-self:flex-end">Optimizing...</span>
+      </form>
+      <p class="muted" style="margin:.6rem 0 0">Groups every shipment still in preparation into the shortest routes, within each vehicle's
+        capacity and the working hours. Takes about 3 seconds.</p>
+      <div id="plan-result" style="margin-top:.8rem"></div>
+    </div>
+
+    <div class="card">
+      <h2>Vehicles in the latest plan <a class="button ghost" href="/ui/map" style="font-size:.82rem;padding:.3rem .7rem">Open the map</a></h2>
+      <div id="plan" hx-get="/ui/fragments/plan" hx-trigger="load, refresh from:body" hx-swap="innerHTML"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Alerts</h2>
+    <div id="alerts" hx-get="/ui/fragments/alerts" hx-trigger="load, every 15s, refresh from:body" hx-swap="innerHTML"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Shipments</h2>
+  <form id="shipfilter" class="row" style="margin-bottom:.7rem" onsubmit="return false">
+    <input type="hidden" id="f-status" name="status" value="">
+    <div class="chips" id="chips" style="margin:0">
+      <button type="button" class="chip on" data-status="">All</button>
+      <button type="button" class="chip" data-status="preparation">To prepare</button>
+      <button type="button" class="chip" data-status="en_transit">On the road</button>
+      <button type="button" class="chip" data-status="livree">Delivered</button>
+      <button type="button" class="chip" data-status="retour">Returned</button>
+    </div>
+    <input type="search" name="q" placeholder="Search order or address" aria-label="Search" style="min-width:210px;margin-left:auto"
+           hx-get="/ui/fragments/shipments" hx-trigger="input changed delay:300ms" hx-target="#shipments" hx-include="#shipfilter">
+  </form>
+  <div id="shipments" hx-get="/ui/fragments/shipments" hx-trigger="load, filter, every 15s, refresh from:body" hx-include="#shipfilter" hx-swap="innerHTML"></div>
+</div>
+
+<script>
+  document.getElementById("chips").addEventListener("click", function (e) {
+    var chip = e.target.closest(".chip");
+    if (!chip) return;
+    document.querySelectorAll("#chips .chip").forEach(function (c) { c.classList.remove("on"); });
+    chip.classList.add("on");
+    document.getElementById("f-status").value = chip.dataset.status;
+    htmx.trigger("#shipments", "filter");
+  });
+</script>
+{% endblock %}

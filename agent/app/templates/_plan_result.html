@@ -1,0 +1,20 @@
+{% if error %}
+<div class="error" role="alert">{{ error }}</div>
+{% elif plan and plan.plan_id %}
+<div class="notice">
+  <strong>Plan {{ plan.plan_id }} is ready:</strong> {{ plan.stops_planned }} stop(s) on {{ plan.vehicles_used }} vehicle(s),
+  {{ "%.1f"|format(plan.total_distance_m / 1000) }} km, {{ plan.gain_pct }} % shorter than the order-entry sequence.
+  <a href="/ui/map?plan={{ plan.plan_id }}">See it on the map</a>
+</div>
+{% else %}
+<div class="notice">Nothing to plan: no shipment in preparation has a location yet.</div>
+{% endif %}
+{% if plan and plan.unassigned %}
+<div class="error"><strong>{{ plan.unassigned|length }} shipment(s) left out:</strong>
+  <ul style="margin:.3rem 0 0 1.1rem;padding:0">
+  {% for u in plan.unassigned %}<li><a href="/ui/shipments/{{ u.shipment_id }}">{{ u.order_ref }}</a> - {{ u.explanation or u.reason }}</li>{% endfor %}
+  </ul></div>
+{% endif %}
+{% if plan and plan.deferred %}<p class="muted">{{ plan.deferred|length }} shipment(s) are wanted on a later day and were not planned today.</p>{% endif %}
+{% if plan and plan.warnings %}<div class="alert"><strong>{{ plan.warnings|length }} stop(s) are far from any road</strong> (a point in the sea, or a wrong address?):
+  {% for w in plan.warnings %}<a href="/ui/shipments/{{ w.shipment_id }}">{{ w.order_ref }}</a> ({{ w.snap_distance_m }} m){% if not loop.last %}, {% endif %}{% endfor %}.</div>{% endif %}

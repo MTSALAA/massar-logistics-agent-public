@@ -1,0 +1,24 @@
+{% if rows %}
+<div class="table-wrap">
+<table class="wide">
+  <thead><tr><th>Shipment</th><th>Status</th><th>Vehicle</th><th class="num">Stop</th><th>Planned arrival</th><th>Address</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><a class="row-link" href="/ui/shipments/{{ r.shipment_id }}">{{ r.shipment_id }}</a><br><span class="muted">order {{ r.order_ref }}</span></td>
+      <td><span class="badge {{ r.status }}">{{ labels[r.status] }}</span>{% if r.failure_reason %}<br><span class="muted">{{ r.failure_reason }}</span>{% endif %}</td>
+      <td>{{ r.vehicle or "-" }}</td>
+      <td class="num">{{ r.seq or "-" }}</td>
+      <td>{{ r.eta.replace("T", " ")[:16] if r.eta else "-" }}{% if r.earliest_date %}<br><span class="muted">not before {{ r.earliest_date }}</span>{% endif %}</td>
+      <td>{{ r.address or ("%.4f, %.4f"|format(r.lat, r.lon) if r.lat is not none else "-") }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if total > rows|length %}<p class="muted" style="margin:.6rem 0 0">Showing the latest {{ rows|length }} of {{ total }}. Use the filters or the search to narrow down.</p>{% endif %}
+{% elif filtered %}
+<div class="empty"><strong>No shipment matches</strong>Change the filter or the search.</div>
+{% else %}
+<div class="empty"><strong>No shipment yet</strong>An order becomes a shipment once it is confirmed, has stock and an address.</div>
+{% endif %}

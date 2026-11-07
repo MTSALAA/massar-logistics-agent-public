@@ -1,0 +1,18 @@
+<div class="grid">
+  <div class="kpi"><div class="label">Shipments</div><div class="value">{{ ind.shipments.total }}</div>
+    <div class="hint">{{ ind.shipments.preparation }} to prepare, {{ ind.shipments.en_transit }} on the road</div></div>
+  <div class="kpi {% if ind.deliveries.delivered %}good{% endif %}"><div class="label">Delivered</div><div class="value">{{ ind.deliveries.delivered }}</div>
+    <div class="hint">{{ ind.deliveries.failed }} failed delivery(ies)</div></div>
+  <div class="kpi {% if ind.deliveries.on_time_rate_pct is not none %}{{ 'good' if ind.deliveries.on_time_rate_pct >= 90 else 'warn' }}{% endif %}">
+    <div class="label">On time</div>
+    <div class="value">{% if ind.deliveries.on_time_rate_pct is not none %}{{ ind.deliveries.on_time_rate_pct }} %{% else %}-{% endif %}</div>
+    <div class="hint">{{ ind.deliveries.on_time }} of {{ ind.deliveries.measured_for_punctuality }} measured (15 min tolerance)</div></div>
+  <div class="kpi"><div class="label">km per route</div>
+    <div class="value">{% if ind.routes.km_per_route is not none %}{{ ind.routes.km_per_route }}{% else %}-{% endif %}</div>
+    <div class="hint">{{ ind.routes.routes_planned }} route(s) in {{ ind.routes.plans }} plan(s)</div></div>
+  <div class="kpi {% if ind.routes.gain_pct is not none %}good{% endif %}"><div class="label">Distance saved</div>
+    <div class="value">{% if ind.routes.gain_pct is not none %}{{ ind.routes.gain_pct }} %{% else %}-{% endif %}</div>
+    <div class="hint">vs the order-entry sequence{% if ind.routes.distance_source == "straight_line" %} (estimated distances){% endif %}</div></div>
+  <div class="kpi {% if ind.open_alerts %}warn{% endif %}"><div class="label">Open alerts</div><div class="value">{{ ind.open_alerts }}</div>
+    <div class="hint">{{ "see the list below" if ind.open_alerts else "nothing needs attention" }}</div></div>
+</div>

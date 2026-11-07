@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sign in - Massar Logistics{% endblock %}
+{% block content %}
+<div class="card login">
+  <h1>Sign in</h1>
+  <p class="lead">Delivery planning and tracking for your company.</p>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/ui/login">
+    <label for="tenant">Company identifier</label>
+    <input id="tenant" name="tenant" value="{{ tenant }}" required autocomplete="off" spellcheck="false"
+           placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    <label for="code">Access code</label>
+    <input id="code" name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false"
+           placeholder="XXXX-XXXX-XXXX">
+    <p><button class="primary big" type="submit">Sign in</button></p>
+  </form>
+  <div class="help">
+    <strong>Where do I find these?</strong><br>
+    The <em>company identifier</em> is the long code of your company (not its name) and the
+    <em>access code</em> is a manager or driver code. Your administrator gives you both, usually as a ready-made link
+    that fills in the identifier for you.
+  </div>
+</div>
+{% endblock %}

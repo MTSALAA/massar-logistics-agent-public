@@ -1,0 +1,30 @@
+{
+  "slug": "massar-logistique",
+  "name": "Massar Logistics / Delivery Agent",
+  "version": "1.2.1",
+  "description": "Turns every order in stock into a planned, optimized and tracked shipment.",
+  "filiere": "automatisation_metier",
+  "category": "logistique",
+  "developer": {
+    "name": "Team Massar",
+    "email": "team@example.org"
+  },
+  "team_name": "Massar",
+  "pricing_model": "flat_monthly",
+  "price": 0,
+  "resource_requirements": {
+    "cpu": "0.5",
+    "memory_mb": 256
+  },
+  "endpoints": {
+    "base_url": "http://localhost:9000",
+    "health": "/health",
+    "activate": "/tenant/activate",
+    "deactivate": "/tenant/deactivate",
+    "status": "/tenant/{tenant_id}/status",
+    "config_schema": "/config-schema",
+    "exchange_notify": "/exchange/notify"
+  },
+  "produces": ["expedition"],
+  "consumes": ["commande", "stock_level"]
+}

@@ -1,0 +1,39 @@
+services:
+  agent:
+    build: ./agent
+    ports:
+      - "9000:9000"
+    environment:
+      DATABASE_PATH: /data/agent.db
+      # Address of the platform core as seen from inside the container. Without it the agent works
+      # offline: shipments wait to be published. Put CORE_URL in a .env file to change it.
+      CORE_URL: ${CORE_URL:-http://host.docker.internal:8000}
+      # Road network. Empty = straight-line distances (the plan says so). With the routing profile
+      # started (see below) set OSRM_URL=http://osrm:5000 in .env.
+      OSRM_URL: ${OSRM_URL:-}
+      # Geocoding of text addresses with the public Nominatim service (1 request per second, cached).
+      # Set NOMINATIM_URL to an empty value in .env to switch geocoding off.
+      NOMINATIM_URL: ${NOMINATIM_URL-https://nominatim.openstreetmap.org}
+      NOMINATIM_CONTACT: ${NOMINATIM_CONTACT:-}
+      NOMINATIM_COUNTRY: ${NOMINATIM_COUNTRY:-dz}
+      # Seconds between two housekeeping passes (delay alerts, retries towards the core). 0 switches it off.
+      MAINTENANCE_SECONDS: ${MAINTENANCE_SECONDS:-300}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - agent-data:/data
+
+  # Routing engine on the real road network. Optional: start it with
+  #   docker compose --profile routing up -d
+  # after preparing the map data once with scripts/prepare_osrm.ps1 (or .sh). The map files stay out of git.
+  osrm:
+    image: osrm/osrm-backend
+    profiles: ["routing"]
+    command: osrm-routed --algorithm mld --max-table-size 1000 /data/region.osrm
+    ports:
+      - "${OSRM_PORT:-5000}:5000"  # only needed to try OSRM by hand; the agent reaches it over the compose network
+    volumes:
+      - ./osrm-data:/data
+
+volumes:
+  agent-data:

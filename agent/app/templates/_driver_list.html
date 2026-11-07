@@ -1,0 +1,59 @@
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+{% if items %}
+<p class="muted" style="margin:0 0 .7rem">{{ items|length }} stop(s) left{% if on_road %}, {{ on_road }} on the road{% endif %}.</p>
+{% if route_link %}
+<p><a class="button primary big" target="_blank" rel="noopener" href="{{ route_link }}">Navigate the next {{ route_link_count }} stop(s)</a>
+  <span class="muted" style="display:block;margin-top:.3rem">Opens your maps app with every stop in visiting order (the app takes ten stops at a time).
+    Tapping it sends the stops' coordinates to Google Maps.</span></p>
+{% elif items|length > 1 %}
+<p class="muted">Choose one vehicle above to navigate its whole route in one tap.</p>
+{% endif %}
+{% endif %}
+
+{% for r in items %}
+<div class="card">
+  <div class="stop {{ 'road' if r.status == 'en_transit' }}">
+    <div class="seq">{{ r.seq or "-" }}</div>
+    <div class="title">{{ r.address or ("%.4f, %.4f"|format(r.lat, r.lon) if r.lat is not none else "No address") }}
+      <span class="badge {{ r.status }}">{{ labels[r.status] }}</span>
+      {% if r.suspect %}<a class="badge check" href="/ui/shipments/{{ r.shipment_id }}" title="Far from any road">Check the location</a>{% endif %}</div>
+    <div class="muted">Order {{ r.order_ref }}{% if r.vehicle %} - {{ r.vehicle }}{% endif %}
+      {% if r.eta %} - planned {{ r.eta[11:16] }}{% endif %}
+      {% if r.earliest_date %} - not before {{ r.earliest_date }}{% endif %}</div>
+    <div class="muted">
+      <a href="/ui/shipments/{{ r.shipment_id }}">Details</a>
+      {% if r.lat is not none %} - <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat={{ r.lat }}&amp;mlon={{ r.lon }}#map=17/{{ r.lat }}/{{ r.lon }}">Show on a map</a>
+      - <a target="_blank" rel="noopener" href="{{ apple_url(r.lat, r.lon) }}">Apple Maps</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="actions">
+    {% if r.lat is not none %}<a class="button ghost big" target="_blank" rel="noopener" href="{{ nav_url(r.lat, r.lon) }}">Navigate</a>{% endif %}
+    {% if r.status == "preparation" %}
+      <button class="primary big" hx-post="/ui/shipments/{{ r.shipment_id }}/status" hx-target="#driver-list" hx-swap="innerHTML"
+              hx-vals='{{ {"status": "en_transit", "vehicle": vehicle}|tojson }}'>Picked up, out for delivery</button>
+    {% elif r.status == "en_transit" %}
+      <button class="good big" hx-post="/ui/shipments/{{ r.shipment_id }}/status" hx-target="#driver-list" hx-swap="innerHTML"
+              hx-vals='{{ {"status": "livree", "vehicle": vehicle}|tojson }}'>Delivered</button>
+    {% endif %}
+  </div>
+
+  {% if r.status == "en_transit" %}
+  <details class="fail">
+    <summary>Delivery failed</summary>
+    <form hx-post="/ui/shipments/{{ r.shipment_id }}/fail" hx-target="#driver-list" hx-swap="innerHTML" hx-confirm="Report this delivery as failed?">
+      <input type="hidden" name="vehicle" value="{{ vehicle }}">
+      <label for="reason-{{ loop.index }}">Reason (required)</label>
+      <input id="reason-{{ loop.index }}" name="reason" required maxlength="200" style="width:100%" placeholder="Customer absent, wrong address...">
+      <label for="again-{{ loop.index }}">Try again on (optional)</label>
+      <input id="again-{{ loop.index }}" type="date" name="reschedule_date" min="{{ tomorrow }}">
+      <p><button class="bad" type="submit">Report the failure</button></p>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% else %}
+<div class="empty"><strong>Nothing to deliver right now</strong>New stops appear here as soon as the manager plans the routes.</div>
+{% endfor %}

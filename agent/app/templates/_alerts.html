@@ -1,0 +1,10 @@
+{% for a in alerts %}
+<div class="alert {{ 'high' if a.kind == 'delivery_failed' }}">
+  <span class="kind">{{ a.title }}</span> - order <strong>{{ a.order_ref }}</strong>
+  <span class="tip">{{ a.message }}</span>
+  {% if a.advice %}<span class="tip"><strong>What to do:</strong> {{ a.advice }}</span>{% endif %}
+  {% if a.shipment_id %}<a href="/ui/shipments/{{ a.shipment_id }}" style="font-size:.85rem">Open the shipment</a>{% endif %}
+</div>
+{% else %}
+<div class="empty"><strong>No open alert</strong>Everything is on track.</div>
+{% endfor %}

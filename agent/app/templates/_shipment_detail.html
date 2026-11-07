@@ -1,0 +1,78 @@
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+<div class="two">
+  <div class="card">
+    <h2>Details <span class="badge {{ s.status }}">{{ labels[s.status] }}</span></h2>
+    <dl class="facts">
+      <dt>Order</dt><dd>{{ s.order_ref }}{% if order_client %} - {{ order_client }}{% endif %}</dd>
+      <dt>Tracking number</dt><dd class="mono">{{ s.tracking_number }}</dd>
+      <dt>Carrier</dt><dd>{{ s.carrier }}</dd>
+      <dt>Delivery address</dt><dd>{{ s.address or "-" }}</dd>
+      <dt>Coordinates</dt><dd>{% if s.lat is not none %}{{ "%.5f"|format(s.lat) }}, {{ "%.5f"|format(s.lon) }}{% else %}not located yet{% endif %}</dd>
+      {% if stop %}
+      <dt>Planned</dt><dd>{{ stop.vehicle_id }}, stop {{ stop.seq }}, arrival {{ stop.eta.replace("T", " ")[:16] }}</dd>
+      {% endif %}
+      {% if s.earliest_date %}<dt>Not before</dt><dd>{{ s.earliest_date }}</dd>{% endif %}
+      {% if s.failure_reason %}<dt>Failure reason</dt><dd>{{ s.failure_reason }}</dd>{% endif %}
+      <dt>Reported to the platform</dt><dd>{% if s.publish_pending %}waiting to be sent{% else %}yes (version {{ s.published_version }}){% endif %}</dd>
+      {% if siblings|length > 1 %}
+      <dt>Same order</dt><dd>{% for o in siblings %}{% if o.shipment_id != s.shipment_id %}<a href="/ui/shipments/{{ o.shipment_id }}">{{ o.shipment_id }}</a> ({{ labels[o.status] }}){% if not loop.last %}, {% endif %}{% endif %}{% endfor %}</dd>
+      {% endif %}
+    </dl>
+
+    {% if s.status in ("preparation", "en_transit") %}
+    <div class="actions">
+      {% if s.lat is not none %}<a class="button ghost" target="_blank" rel="noopener" href="{{ nav_url(s.lat, s.lon) }}">Navigate</a>{% endif %}
+      {% if s.status == "preparation" %}
+      <button class="primary" hx-post="/ui/shipments/{{ s.shipment_id }}/status" hx-target="#shipment-detail" hx-swap="innerHTML"
+              hx-vals='{"status": "en_transit", "view": "detail"}'>Picked up, out for delivery</button>
+      {% else %}
+      <button class="good" hx-post="/ui/shipments/{{ s.shipment_id }}/status" hx-target="#shipment-detail" hx-swap="innerHTML"
+              hx-vals='{"status": "livree", "view": "detail"}'>Delivered</button>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if s.status == "en_transit" %}
+    <details class="fail">
+      <summary>Delivery failed</summary>
+      <form hx-post="/ui/shipments/{{ s.shipment_id }}/fail" hx-target="#shipment-detail" hx-swap="innerHTML"
+            hx-confirm="Report this delivery as failed?">
+        <input type="hidden" name="view" value="detail">
+        <label for="reason">Reason (required)</label>
+        <input id="reason" name="reason" required maxlength="200" style="width:100%" placeholder="Customer absent, wrong address...">
+        <label for="again">Try again on (optional)</label>
+        <input id="again" type="date" name="reschedule_date" min="{{ tomorrow }}">
+        <p><button class="bad" type="submit">Report the failure</button></p>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>History</h2>
+      <ul class="timeline">
+        {% for e in events|reverse %}
+        <li class="{{ e.status }}"><strong>{{ labels[e.status] }}</strong>
+          <time datetime="{{ e.at }}">{{ e.at[:10] }} {{ e.at[11:16] }} UTC</time>
+          {% if e.note %}<span class="muted">{{ e.note }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    {% if s.status == "preparation" %}
+    <div class="card">
+      <h2>Set the location by hand</h2>
+      <p class="muted" style="margin-top:0">Use this when the address could not be found, or when the point on the map is wrong
+        (for example in the sea). Copy the latitude and longitude from a map.</p>
+      <div id="loc-msg"></div>
+      <form hx-post="/ui/shipments/{{ s.shipment_id }}/location" hx-target="#loc-msg" hx-swap="innerHTML" class="row">
+        <div class="field"><label for="lat">Latitude</label><input id="lat" name="lat" inputmode="decimal" required placeholder="36.7509" value="{{ s.lat if s.lat is not none else '' }}" style="width:9rem"></div>
+        <div class="field"><label for="lon">Longitude</label><input id="lon" name="lon" inputmode="decimal" required placeholder="5.0567" value="{{ s.lon if s.lon is not none else '' }}" style="width:9rem"></div>
+        <button type="submit" style="align-self:flex-end">Save</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>

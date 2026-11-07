@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b3556">
+  <title>{% block title %}Massar Logistics{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/ui/static/favicon.svg?v={{ v }}">
+  <link rel="stylesheet" href="/ui/static/app.css?v={{ v }}">
+  <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+  <div class="inner">
+    <a class="brand" href="{{ '/ui' if who and who.role == 'manager' else '/ui/driver' if who else '/ui/login' }}">
+      <img class="logo" src="/ui/static/favicon.svg" alt="">Massar <span>Logistics</span>
+    </a>
+    {% if who %}
+    <nav class="nav" aria-label="Main">
+      {% if who.role == "manager" %}<a href="/ui" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>{% endif %}
+      <a href="/ui/driver" class="{{ 'active' if active == 'driver' }}">Deliveries</a>
+      <a href="/ui/map" class="{{ 'active' if active == 'map' }}">Map</a>
+    </nav>
+    <div class="who">
+      <span class="role">{{ who.role }}</span>
+      <form method="post" action="/ui/logout"><button type="submit">Sign out</button></form>
+    </div>
+    {% endif %}
+  </div>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

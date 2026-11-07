@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ s.shipment_id }} - Massar Logistics{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ s.shipment_id }}</h1>
+    <p class="lead" style="margin:0">Order {{ s.order_ref }}</p>
+  </div>
+  <a class="button ghost" href="{{ '/ui' if who.role == 'manager' else '/ui/driver' }}">Back</a>
+</div>
+
+<div id="shipment-detail" hx-get="/ui/fragments/shipments/{{ s.shipment_id }}" hx-trigger="every 20s [!document.activeElement || document.activeElement.tagName !== 'INPUT']" hx-swap="innerHTML">
+  {% include "_shipment_detail.html" %}
+</div>
+
+{% if s.lat is not none %}
+<div class="card">
+  <h2>Location <a class="button ghost" style="font-size:.82rem;padding:.3rem .7rem" target="_blank" rel="noopener"
+        href="https://www.openstreetmap.org/?mlat={{ s.lat }}&amp;mlon={{ s.lon }}#map=17/{{ s.lat }}/{{ s.lon }}">Open in OpenStreetMap</a></h2>
+  <div id="detail-map"></div>
+  <script id="loc" type="application/json">{{ {"lat": s.lat, "lon": s.lon, "label": s.address or s.shipment_id}|tojson }}</script>
+  <script>
+    (function () {
+      var p = JSON.parse(document.getElementById("loc").textContent);
+      var m = L.map("detail-map", { scrollWheelZoom: false }).setView([p.lat, p.lon], 15);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" }).addTo(m);
+      var box = document.createElement("div"); box.textContent = p.label;
+      L.marker([p.lat, p.lon]).bindPopup(box).addTo(m);
+    })();
+  </script>
+</div>
+{% endif %}
+{% endblock %}

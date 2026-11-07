@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Deliveries - Massar Logistics{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Deliveries</h1>
+    <p class="lead" style="margin:0">Your stops, in the order to visit them.</p>
+  </div>
+  {% if vehicles %}
+  <form method="get" action="/ui/driver" class="row">
+    <div class="field">
+      <label for="vehicle">Vehicle</label>
+      <select id="vehicle" name="vehicle" onchange="this.form.submit()">
+        <option value="">All vehicles</option>
+        {% for v in vehicles %}<option value="{{ v }}" {% if v == vehicle %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+    </div>
+    <noscript><button class="ghost" type="submit">Show</button></noscript>
+  </form>
+  {% endif %}
+</div>
+<div id="driver-list"
+     hx-get="/ui/fragments/driver?vehicle={{ vehicle|urlencode }}"
+     hx-trigger="load, every 30s [!document.activeElement || document.activeElement.tagName !== 'INPUT']"
+     hx-swap="innerHTML">
+  <div class="empty">Loading...</div>
+</div>
+{% endblock %}

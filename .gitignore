@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local data and secrets
+*.db
+*.sqlite3
+data/
+.env
+.env.*
+!.env.example
+
+# Maps (large OSRM / OpenStreetMap files)
+osrm-data/
+*.osm.pbf
+
+# Node (document builders)
+node_modules/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

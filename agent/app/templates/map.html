@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Map - Massar Logistics{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Routes{% if plan %} - plan {{ plan.plan_id }}{% endif %}</h1>
+    <p class="lead" style="margin:0">{% if plan %}For {{ plan.plan_date }} - {{ plan.stops_planned }} stop(s), {{ "%.1f"|format(plan.total_distance_m / 1000) }} km,
+      {{ plan.gain_pct }} % shorter than the order-entry sequence.{% else %}No plan yet.{% endif %}</p>
+  </div>
+  {% if plans|length > 1 %}
+  <form method="get" action="/ui/map" class="row">
+    <div class="field"><label for="plan">Plan</label>
+      <select id="plan" name="plan" onchange="this.form.submit()">
+        {% for p in plans %}<option value="{{ p.plan_id }}" {% if plan and p.plan_id == plan.plan_id %}selected{% endif %}>{{ p.plan_id }} - {{ p.plan_date }}</option>{% endfor %}
+      </select></div>
+  </form>
+  {% endif %}
+</div>
+
+{% if not plan %}
+<div class="card"><div class="empty"><strong>No plan yet</strong>
+  {% if who.role == "manager" %}Plan the routes from the <a href="/ui">dashboard</a> and they appear here.{% else %}The manager has not planned the routes yet.{% endif %}</div></div>
+{% else %}
+<div class="card">
+  <div class="legend" id="legend">
+    {% for r in plan.routes %}
+    <label><input type="checkbox" checked data-vehicle="{{ r.vehicle_id }}">
+      <span class="swatch" data-vehicle="{{ r.vehicle_id }}"></span><strong>{{ r.vehicle_id }}</strong>
+      <span class="muted">{{ r.stops }} stop(s), {{ "%.1f"|format(r.distance_m / 1000) }} km, back at {{ r.back_at_depot[11:16] }}</span></label>
+    {% endfor %}
+  </div>
+  <p class="muted" style="margin:.5rem 0 0">{% if data.paths %}Lines follow the <strong>real roads</strong>, in visiting order.{% else %}Lines join the stops in visiting order; they are not the roads (the road network is not connected).{% endif %}
+    Distances: {{ "road network" if plan.source == "osrm" else "estimated from straight lines (x1.3)" }}.
+    {% if plan.warnings %}<strong style="color:var(--bad)">Pins with a red ring are far from any road: check their address.</strong>{% endif %}</p>
+</div>
+{% endif %}
+
+<div class="map-layout">
+  <div><div id="map"></div></div>
+  <div class="card" style="margin:0">
+    <h2>Stops</h2>
+    {% if plan %}
+    <div class="table-wrap" style="max-height:58vh;overflow-y:auto">
+    <table class="stoplist" id="stoplist">
+      <thead><tr><th>Veh.</th><th class="num">#</th><th>Order</th><th>Arrival</th></tr></thead>
+      <tbody>
+      {% for s in plan.stops %}
+        <tr data-id="{{ s.shipment_id }}"><td>{{ s.vehicle_id }}</td><td class="num">{{ s.seq }}</td>
+          <td>{{ s.order_ref }}<br><span class="muted">{{ s.address or "" }}</span></td><td>{{ s.eta[11:16] }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}<div class="empty">The stops will be listed here.</div>{% endif %}
+  </div>
+</div>
+
+<script id="plan-data" type="application/json">{{ data|tojson }}</script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById("plan-data").textContent);
+  var colors = {{ colors|tojson }};
+  var map = L.map("map");
+  // Leaflet refuses to draw lines on a map that has no view yet: give it one first, then fit it to the stops at the end.
+  map.setView(data.depot ? [data.depot.lat, data.depot.lon] : [28.0, 2.6], data.depot ? 12 : 5);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  var suspect = {};
+  (data.warnings || []).forEach(function (w) { suspect[w.shipment_id] = w; });
+  var bounds = [], groups = {}, markers = {};
+
+  function popup(s, vehicle) {          // built with the DOM: addresses are data, never markup
+    var box = document.createElement("div");
+    function line(text, bold) {
+      var d = document.createElement(bold ? "strong" : "span"); d.textContent = text;
+      box.appendChild(d); box.appendChild(document.createElement("br"));
+    }
+    line(vehicle + " - stop " + s.seq, true);
+    line("Order " + s.order_ref);
+    if (s.address) line(s.address);
+    line("Planned arrival " + s.eta.replace("T", " ").slice(11, 16));
+    if (suspect[s.shipment_id]) line("Far from any road (" + suspect[s.shipment_id].snap_distance_m + " m): check the address");
+    var a = document.createElement("a"); a.href = "/ui/shipments/" + encodeURIComponent(s.shipment_id); a.textContent = "Open the shipment";
+    box.appendChild(a);
+    box.appendChild(document.createTextNode(" - "));
+    var n = document.createElement("a"); n.target = "_blank"; n.rel = "noopener"; n.textContent = "Navigate";
+    n.href = "https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lon + "&travelmode=driving";
+    box.appendChild(n);
+    return box;
+  }
+  function pin(n, color, warn) {
+    var d = document.createElement("div");
+    d.className = "pin" + (warn ? " warn" : ""); d.style.background = color; d.textContent = String(n);
+    return L.divIcon({ className: "", iconSize: [26, 26], iconAnchor: [13, 13], html: d.outerHTML });
+  }
+
+  var vehicles = [];
+  data.stops.forEach(function (s) { if (vehicles.indexOf(s.vehicle_id) < 0) vehicles.push(s.vehicle_id); });
+  vehicles.sort();
+
+  vehicles.forEach(function (vehicle, i) {
+    var color = colors[i % colors.length], group = L.layerGroup().addTo(map);
+    groups[vehicle] = group;
+    var stops = data.stops.filter(function (s) { return s.vehicle_id === vehicle; })
+                          .sort(function (a, b) { return a.seq - b.seq; });
+    var path = data.depot ? [[data.depot.lat, data.depot.lon]] : [];
+    stops.forEach(function (s) {
+      path.push([s.lat, s.lon]); if (!suspect[s.shipment_id]) bounds.push([s.lat, s.lon]);   // one wrong point must not shrink the whole map
+      var m = L.marker([s.lat, s.lon], { icon: pin(s.seq, color, !!suspect[s.shipment_id]), zIndexOffset: 100 })
+               .bindPopup(popup(s, vehicle)).addTo(group);
+      markers[s.shipment_id] = m;
+    });
+    if (data.depot) path.push([data.depot.lat, data.depot.lon]);
+    var road = (data.paths || {})[vehicle];       // the real road line when the road network was used
+    L.polyline(road && road.length > 1 ? road : path, { color: color, weight: road ? 5 : 4, opacity: 0.85 }).addTo(group);
+    document.querySelectorAll('.swatch[data-vehicle="' + vehicle.replace(/"/g, "") + '"]').forEach(function (el) { el.style.background = color; });
+  });
+
+  if (data.depot) {
+    bounds.push([data.depot.lat, data.depot.lon]);
+    var home = document.createElement("div"); home.textContent = "Depot";
+    L.circleMarker([data.depot.lat, data.depot.lon], { radius: 9, color: "#1b3556", fillColor: "#1b3556", fillOpacity: 1 }).bindPopup(home).addTo(map);
+  }
+  if (!bounds.length) { data.stops.forEach(function (s) { bounds.push([s.lat, s.lon]); }); }   // everything is suspect: show it all
+  if (bounds.length > 1) { map.fitBounds(bounds, { padding: [30, 30] }); }
+  else if (bounds.length) { map.setView(bounds[0], 14); }
+  else { map.setView([28.0, 2.6], 5); }
+
+  document.querySelectorAll("#legend input").forEach(function (box) {   // show or hide one vehicle
+    box.addEventListener("change", function () {
+      var g = groups[box.dataset.vehicle];
+      if (g) { box.checked ? map.addLayer(g) : map.removeLayer(g); }
+    });
+  });
+  var list = document.getElementById("stoplist");
+  if (list) list.addEventListener("click", function (e) {                // click a row: go to the pin
+    var row = e.target.closest("tr[data-id]"); if (!row) return;
+    var m = markers[row.dataset.id]; if (!m) return;
+    list.querySelectorAll("tr.focus").forEach(function (r) { r.classList.remove("focus"); });
+    row.classList.add("focus");
+    map.setView(m.getLatLng(), Math.max(map.getZoom(), 15)); m.openPopup();
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% if plan %}
+<p class="muted" style="margin:0 0 .5rem">Plan <strong>{{ plan.plan_id }}</strong> for {{ plan.plan_date }} -
+  {{ plan.stops_planned }} stop(s), {{ "%.1f"|format(plan.total_distance_m / 1000) }} km in total,
+  {{ plan.gain_pct }} % shorter than the order-entry sequence ({{ "%.1f"|format(plan.baseline_distance_m / 1000) }} km).
+  Distances: {{ "road network" if plan.source == "osrm" else "estimated from straight lines (x1.3)" }}.</p>
+{% for r in plan.routes %}
+<div class="vehicle">
+  <div class="top"><span><span class="swatch" style="background:{{ colors[loop.index0 % colors|length] }}"></span><strong>{{ r.vehicle_id }}</strong></span>
+    <span class="muted">{{ r.stops }} stop(s) - {{ "%.1f"|format(r.distance_m / 1000) }} km - back at {{ r.back_at_depot[11:16] }}</span></div>
+  <div class="bar" title="Load {{ r.load }} of {{ r.capacity }}"><i style="width:{{ [100, (r.load / r.capacity * 100) if r.capacity else 0]|min|round(0) }}%"></i></div>
+  <div class="muted">Load {{ r.load }} / {{ r.capacity }} units</div>
+</div>
+{% endfor %}
+{% if plan.warnings %}<div class="alert">{{ plan.warnings|length }} stop(s) are far from any road - check their address.</div>{% endif %}
+{% else %}
+<div class="empty"><strong>No plan yet</strong>Press "Plan routes now" to build one.</div>
+{% endif %}
